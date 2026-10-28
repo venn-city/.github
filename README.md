@@ -32,12 +32,31 @@ when they have content.
 6. Repo extras — sections a repo lists in its own `.github/pr-extras.md` (Atlas coverage, app
    builds, QA sign-off…).
 
+## Commit standard
+
+A commit subject has the PR title's shape. Repos squash-merge, so what lands on the default branch
+is the PR title or, for a single-commit PR, the commit subject: either way, one format.
+
+```
+<type>(<scope>): <description> - <ticket id>
+
+<optional body: why, not a replay of the diff; wrap at ~100 columns>
+
+Monday: <url>
+```
+
+- Same `type` list and `scope` rules as the PR title; several scopes are comma-separated.
+- The ticket suffix belongs on every commit whose work has one, which is almost always.
+- Also accepted: GitHub's `Revert "<subject>"`, and `fixup!` / `squash!` / `amend!` before a
+  standard subject. Merge commits are not checked.
+- Never skip the repo's hooks (`--no-verify`).
+
 ## How it is applied
 
 | Who | How |
 |---|---|
 | People | `pull_request_template.md` here is the default for every repo without its own. A repo that needs extras keeps its own template: this one plus its extra sections. |
-| Claude | The `create-pr` skill in the `venn-skills` plugin ([venn-ai-skills](https://github.com/venn-city/venn-ai-skills)), enabled per repo in `.claude/settings.json`. It reads `.github/pr-extras.md`. |
-| CI | `.github/workflows/pr-standard.yml`, a reusable workflow. Add it to a repo from **Actions → New workflow → PR standard**, or copy `workflow-templates/pr-standard.yml`. |
+| Claude | The `create-pr` and `create-commit` skills in the `venn-skills` plugin ([venn-ai-skills](https://github.com/venn-city/venn-ai-skills)), enabled per repo in `.claude/settings.json`. `create-pr` reads `.github/pr-extras.md`. |
+| CI | `.github/workflows/pr-standard.yml`, a reusable workflow that checks the PR title, its sections and every commit subject. Add it to a repo from **Actions → New workflow → PR standard**, or copy `workflow-templates/pr-standard.yml`. |
 
-Change the standard here, in the skill, and in the workflow together.
+Change the standard here, in the skills, and in the workflow together.

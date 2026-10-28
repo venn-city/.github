@@ -48,3 +48,30 @@ jobs:
             exit 1
           fi
           echo "PR matches the venn-city standard."
+
+      - name: Check commit subjects
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          TYPES='feat|fix|chore|refactor|perf|docs|test|ci|build|revert'
+          SHAPE="^((fixup|squash|amend)! )*($TYPES)(\([a-z0-9][a-z0-9._/, -]*\))?!?: [^ ].*"
+
+          bad=0
+          while IFS= read -r subject; do
+            case "$subject" in
+              'Merge '*|'Revert "'*) continue ;;
+            esac
+            if ! printf '%s' "$subject" | grep -Eq "$SHAPE"; then
+              echo "::error::Commit subject is off the standard: $subject"
+              bad=1
+            fi
+          done < <(gh api "repos/$REPO/pulls/$PR_NUMBER/commits" --paginate -q '.[].commit.message | split("\n")[0]')
+
+          if [ "$bad" != 0 ]; then
+            echo "Commit subjects must be '<type>(<scope>): <description> - <ticket id>'. Reword them (git rebase -i, reword) and force-push."
+            echo "Standard: https://github.com/venn-city/.github/blob/main/README.md"
+            exit 1
+          fi
+          echo "Every commit subject matches the venn-city standard."
