@@ -1,0 +1,50 @@
+# Org PR standard check — reusable workflow every venn-city repo calls (see README.md)
+name: PR standard
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  pr-standard:
+    runs-on: ubuntu-latest
+    # Dependency bots open PRs in their own shape.
+    if: ${{ !endsWith(github.event.pull_request.user.login, '[bot]') }}
+    steps:
+      - name: Check PR title and description
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          NO_TICKET: ${{ contains(github.event.pull_request.labels.*.name, 'no-ticket') }}
+        run: |
+          TYPES='feat|fix|chore|refactor|perf|docs|test|ci|build|revert'
+          # Monday item ids are 10-12 digits; Linear ids are VENN-<n>, any case.
+          TICKET='([0-9]{10,12}|[Vv][Ee][Nn][Nn]-[0-9]+)'
+          SHAPE="^($TYPES)(\([a-z0-9][a-z0-9._/-]*\))?!?: [^ ].*"
+
+          ok=1
+          fail() { echo "::error::$1"; ok=0; }
+
+          if ! printf '%s' "$PR_TITLE" | grep -Eq "$SHAPE"; then
+            fail "Title must be '<type>(<scope>): <description> - <ticket id>', type one of: ${TYPES//|/, }."
+          elif [ "$NO_TICKET" != "true" ] && ! printf '%s' "$PR_TITLE" | grep -Eq " - $TICKET\$"; then
+            fail "Title must end with ' - <Monday id>' or ' - VENN-<n>' (or add the no-ticket label)."
+          fi
+
+          body=$(printf '%s' "$PR_BODY" | tr -d '\r')
+          for heading in What Changes Testing; do
+            printf '%s\n' "$body" | grep -Eq "^## $heading[[:space:]]*\$" || fail "Description is missing the '## $heading' section."
+          done
+
+          if [ "$NO_TICKET" != "true" ] && ! printf '%s' "$body" | grep -Eqi 'monday\.com/|linear\.app/'; then
+            echo "::warning::Description has no Monday or Linear ticket link under '## What'."
+          fi
+
+          if [ "$ok" != 1 ]; then
+            echo "Standard: https://github.com/venn-city/.github/blob/main/README.md"
+            exit 1
+          fi
+          echo "PR matches the venn-city standard."
