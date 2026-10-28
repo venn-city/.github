@@ -1,15 +1,15 @@
 <!--
-Title: <type>(<scope>): <description> - <ticket id>
+Title: <type>(<scope>): <description> - <ticket id>   (ticket recommended, optional)
   e.g. feat(embedded-apps): manage an organization's embedded apps - 13379497736
   type: feat · fix · chore · refactor · perf · docs · test · ci · build · revert
-Delete any optional section you don't need. Standard: https://github.com/venn-city/.github
+Keep only the sections that are relevant. Conventions: https://github.com/venn-city/.github
 -->
 
 ## What
 
 <!-- 2–4 sentences: the behaviour that changes and why, in product terms. -->
 
-Monday: <!-- https://venn-community.monday.com/boards/…/pulses/… (or Linear: <issue url>) -->
+<!-- Ticket, if there is one — Monday: https://venn-community.monday.com/boards/…/pulses/…  or  Linear: <issue url> -->
 
 ## Changes
 

@@ -1,6 +1,0 @@
-{
-  "name": "PR standard",
-  "description": "Checks a pull request's title and sections against the venn-city PR standard.",
-  "iconName": "octicon git-pull-request",
-  "categories": ["Automation"]
-}
