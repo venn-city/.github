@@ -13,18 +13,23 @@ on:
   workflow_call:
     inputs:
       required-check:
-        description: The required check the line waits on (a check run or commit status name).
+        description: The required check(s) the line waits on, comma-separated (check run or commit status names).
         type: string
         default: Jenkins
       max-in-flight:
         description: How many PRs may be tested against the default branch at once.
         type: number
         default: 1
+      stale-minutes:
+        description: A check pending longer than this stops holding the line, and the PR gets a comment.
+        type: number
+        default: 120
 
 jobs:
   next:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Up to ~2 minutes per rebase waiting for the new head, plus the GraphQL reads.
+    timeout-minutes: 10
     steps:
       # The script comes from this repo (public), at main, like the workflow callers pin.
       - uses: actions/checkout@v4
@@ -34,8 +39,9 @@ jobs:
           sparse-checkout: .github/scripts
       - uses: actions/github-script@v7
         env:
-          REQUIRED_CHECK: ${{ inputs.required-check }}
+          REQUIRED_CHECKS: ${{ inputs.required-check }}
           MAX_IN_FLIGHT: ${{ inputs.max-in-flight }}
+          STALE_MINUTES: ${{ inputs.stale-minutes }}
         with:
           script: |
             const { run } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/auto-update-prs.mjs`);

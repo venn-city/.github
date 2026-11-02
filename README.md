@@ -95,12 +95,28 @@ jobs:
       cancel-in-progress: false
     uses: venn-city/.github/.github/workflows/auto-update-prs.yml@main
     with:
-      required-check: Jenkins
+      required-check: Jenkins # comma-separated when the ruleset requires more, e.g. Jenkins,e2e
 ```
 
-Then turn on, in the repo: the ruleset's "require branches to be up to date", "Allow auto-merge" and
-"Always suggest updating pull request branches", and turn off "require extra approval for
-unattributed changes" (a rebase by the line would otherwise need a new approval).
+`required-check` should list every check the ruleset requires, so the line waits for all of them.
+`max-in-flight` (default 1) lets more PRs be tested at once, and `stale-minutes` (default 120) is how
+long a pending check may hold the line before the PR is skipped with a comment.
+
+Then change the repo settings, **in this order**, once the caller has merged:
+
+1. In the ruleset, turn **off** "require extra approval for unattributed changes". Otherwise every
+   rebase by the line needs a new approval, and each PR is stranded in turn.
+2. In the ruleset, turn **on** "require branches to be up to date", and require every check the
+   line waits on (pinned to the app that reports it). Without these, auto-merge can land a PR on a
+   stale or incomplete run.
+3. **Then** turn on "Allow auto-merge" and "Always suggest updating pull request branches".
+
+Good to know:
+
+- A PR that changes `.github/workflows` can't be rebased with the line's token; it gets a comment,
+  and its author rebases it.
+- A stacked PR that was retargeted after its parent was squash-merged usually fails to rebase,
+  because it replays commits already in the default branch. Rebase it by hand once.
 
 Callers pin `@main`, so a fix merged here reaches every repo at once. Test it first:
 `node --test .github/scripts/` (the `Test scripts` workflow runs it on PRs here).
