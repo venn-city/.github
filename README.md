@@ -79,9 +79,13 @@ on:
     - cron: '17 5-19 * * 0-4'
   workflow_dispatch:
 
+# Listing permissions sets every other scope to none, so grant the reads the line needs: check runs
+# (Jenkins reports one) and commit statuses.
 permissions:
   contents: write
   pull-requests: write
+  checks: read
+  statuses: read
 
 jobs:
   next:
