@@ -1,0 +1,42 @@
+name: Auto-update ready PRs (reusable)
+
+# The merge line, shared by every venn-city repo that has one. It rebases the next approved PR that
+# has auto-merge on onto the default branch, one at a time. Jenkins reruns on the rebased head and
+# auto-merge lands it once it's green, which pushes to the default branch and starts the next one.
+# With "require branches to be up to date" on, every PR merges on a green run against the current
+# default branch.
+#
+# A repo opts in with a small caller workflow. Events only reach workflows in their own repo, so the
+# triggers live in the caller; see the README for the caller to copy. Logic and tests live in
+# .github/scripts/auto-update-prs.mjs (run them with `node --test .github/scripts/`).
+on:
+  workflow_call:
+    inputs:
+      required-check:
+        description: The required check the line waits on (a check run or commit status name).
+        type: string
+        default: Jenkins
+      max-in-flight:
+        description: How many PRs may be tested against the default branch at once.
+        type: number
+        default: 1
+
+jobs:
+  next:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # The script comes from this repo (public), at main, like the workflow callers pin.
+      - uses: actions/checkout@v4
+        with:
+          repository: venn-city/.github
+          ref: main
+          sparse-checkout: .github/scripts
+      - uses: actions/github-script@v7
+        env:
+          REQUIRED_CHECK: ${{ inputs.required-check }}
+          MAX_IN_FLIGHT: ${{ inputs.max-in-flight }}
+        with:
+          script: |
+            const { run } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/auto-update-prs.mjs`);
+            await run({ github, context, core });

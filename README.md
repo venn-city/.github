@@ -46,3 +46,61 @@ it, and nobody needs to rebase or force-push to reword an existing commit.
 | Claude | The `create-pr` and `create-commit` skills in the `venn-skills` plugin ([venn-ai-skills](https://github.com/venn-city/venn-ai-skills)), enabled per repo in `.claude/settings.json`. `create-pr` reads `.github/pr-extras.md`. |
 
 Change the conventions here and in the skills together.
+
+## Merge line (auto-rebase)
+
+A repo whose ruleset requires branches to be up to date can opt in to the merge line. Once a PR is
+approved and has auto-merge on, the line rebases it onto the default branch when its turn comes,
+Jenkins reruns, and auto-merge lands it when green. It goes one PR at a time, so every merge is
+tested against the current default branch without anyone rebasing by hand.
+
+The logic lives here once: the reusable [`auto-update-prs.yml`](.github/workflows/auto-update-prs.yml)
+and its script and tests in [`.github/scripts/`](.github/scripts/). GitHub delivers events only to
+workflows in their own repo, so each repo adds this caller as `.github/workflows/auto-update-prs.yml`
+(change `main` to the repo's default branch):
+
+```yaml
+name: Auto-update ready PRs
+
+# The merge line: see https://github.com/venn-city/.github#merge-line-auto-rebase
+on:
+  push:
+    branches: [main]
+  # _target runs the default-branch workflow with a write token, never the PR's code.
+  pull_request_target:
+    types: [auto_merge_enabled, auto_merge_disabled, ready_for_review, closed]
+  pull_request_review:
+    types: [submitted]
+  # Jenkins reports a check run; a finished one frees the slot or drops a red PR out of line.
+  check_run:
+    types: [completed]
+  # Backstop for missed events, during working hours only (UTC) to save Actions minutes.
+  schedule:
+    - cron: '17 5-19 * * 0-4'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  next:
+    # Skipped jobs cost no minutes: ignore other check runs and non-approving reviews.
+    if: >-
+      (github.event_name != 'check_run' || github.event.check_run.name == 'Jenkins') &&
+      (github.event_name != 'pull_request_review' || github.event.review.state == 'approved')
+    # On the job, so skipped runs never take the one waiting slot from a real one.
+    concurrency:
+      group: auto-update-prs
+      cancel-in-progress: false
+    uses: venn-city/.github/.github/workflows/auto-update-prs.yml@main
+    with:
+      required-check: Jenkins
+```
+
+Then turn on, in the repo: the ruleset's "require branches to be up to date", "Allow auto-merge" and
+"Always suggest updating pull request branches", and turn off "require extra approval for
+unattributed changes" (a rebase by the line would otherwise need a new approval).
+
+Callers pin `@main`, so a fix merged here reaches every repo at once. Test it first:
+`node --test .github/scripts/` (the `Test scripts` workflow runs it on PRs here).
